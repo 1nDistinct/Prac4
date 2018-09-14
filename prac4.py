@@ -6,6 +6,8 @@ import sys
 import RPi.GPIO as GPIO
 
 #Define Variables
+timer = 0
+start = True
 delay = 0.5
 ldr_channel = 0
 temp_channel = 1
@@ -13,7 +15,7 @@ pot_channel = 2
 resetSwitch = 17
 StopSwitch = 27
 dispSwitch = 22
-freqSwitch = 4
+freqSwitch = 18
 arr = []
 #Create SPI
 spi = spidev.SpiDev()
@@ -39,6 +41,7 @@ def ConvertVolts(data,places):
     volts = round(volts,places)
     return volts
 
+
 def Temperature (voltage):
     temp = voltage
     temp = int ((temp - 0.5)/0.01 )
@@ -50,13 +53,11 @@ def Percent (voltage):
 
 # function definition: threaded callback
 def resetCallback(channel):
-    global timer
+    
     timer = 0
     print ("\n" * 100)
 
 def stopCallback(channel):
-    global start
-    count
     arr.clear()
     count += 1;
     if (count%2 == 0):
@@ -99,7 +100,7 @@ try:
             temp_volts = ConvertVolts(temp_data ,2)
             temp = Temperature(temp_volts)
             light = Percent(ldr_volts)
-            element = (str(time.strftime("%H:%M:%S   ")) + '00:00:' + str(timer)+ "     " + str(pot)+ 'V    ' + str(temp) + 'C     ' + str(light) +'%')
+            element = (str(time.strftime("%H:%M:%S   ")) + '00:00:' + str(timer)+ "     " + str(pot_volts)+ 'V    ' + str(temp) + 'C     ' + str(light) +'%')
             # print (time.strftime("%H:%M:%S  "),'00:00:' + str(timer),'   ',str(pot)+ 'V   ' , str(temp) + 'C   ', str(light) +'%')
             arr.append(element)
 
