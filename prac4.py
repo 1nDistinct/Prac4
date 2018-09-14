@@ -6,8 +6,11 @@ import sys
 import RPi.GPIO as GPIO
 
 #Define Variables
+global count
+count = 0
 timer = 0
 start = True
+global delay
 delay = 0.5
 ldr_channel = 0
 temp_channel = 1
@@ -58,18 +61,24 @@ def resetCallback(channel):
     print ("\n" * 100)
 
 def stopCallback(channel):
+    global count
     arr.clear()
-    count += 1;
+    count += 1
     if (count%2 == 0):
         start = True
+        print("Start")
     else:
         start = False
+        print("Stop")
 
 def freqCallback(channel):
+    global delay
     if (delay >= 2):
         delay = 0.5
+        print(delay)
     else:
         delay = delay * 2
+        print(delay)
 
 def displayCallback(channel):
     print('_______________________________________________')
