@@ -1,47 +1,31 @@
 #!/usr/bin/python
-
 import spidev
 import time
 import os
 import sys
 import RPi.GPIO as GPIO
-import Adafruit_MCP3008
-
-
 
 #Define Variables
-values = [0]*8
 delay = 0.5
 ldr_channel = 0
 temp_channel = 1
 pot_channel = 2
-SPICLK = 11
-SPIMISO = 9
-SPIMOSI = 10
-SPICS = 8
-switch_1 = 17
-switch_2 = 27
-switch_3 = 22
-mcp = Adafruit_MCP3008.MCP3008(clk=SPICLK, cs=SPICS, mosi=SPIMOSI,
-miso=SPIMISO)
+resetSwitch = 17
+StopSwitch = 27
+dispSwitch = 22
+freqSwitch = 4
+arr = []
 #Create SPI
 spi = spidev.SpiDev()
 spi.open(0, 0)
-
+spi.max_speed_hz = 1000000
 GPIO.setmode(GPIO.BCM)
+# switch 1,2,3,4
+GPIO.setup(resetSwitch, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(StopSwitch, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(dispSwitch, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(freqSwitch, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# switch 1 & switch 2: input – pull-up
-GPIO.setup(switch_1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(switch_2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
-# switch 3: input – pull-down
-GPIO.setup(switch_3, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
-# pin definition
-GPIO.setup(SPIMOSI, GPIO.OUT)
-GPIO.setup(SPIMISO, GPIO.IN)
-GPIO.setup(SPICLK, GPIO.OUT)
-GPIO.setup(SPICS, GPIO.OUT)
 
 def GetData(channel): # channel must be an integer 0-7
     adc = spi.xfer2([1,(8+channel)<<4,0]) # sending 3 bytes
@@ -55,47 +39,72 @@ def ConvertVolts(data,places):
     volts = round(volts,places)
     return volts
 
-def printData():
-    for i in range(8):
-        values[i] = mcp.read_adc(i)
- # delay for a half second
-    time.sleep(0.5)
-    print values
+def Temperature (voltage):
+    temp = voltage
+    temp = int ((temp - 0.5)/0.01 )
+    return temp
+
+def Percent (voltage):
+    percentage = (int (voltage/3.1*100))
+    return percentage
 
 # function definition: threaded callback
-def callback1(channel):
+def resetCallback(channel):
+    global timer
+    timer = 0
+    print ("\n" * 100)
 
-def callback2(channel):
-# put code here
+def stopCallback(channel):
+    global start
+    count
+    arr.clear()
+    count += 1;
+    if (count%2 == 0):
+        start = True
+    else:
+        start = False
 
-try:
-    while True:
+def freqCallback(channel):
+    if (delay >= 2):
+        delay = 0.5
+    else:
+        delay = delay * 2
 
+def displayCallback(channel):
+    print('_______________________________________________')
+    print('Time        Timer          Pot    Temp   Light')
 
+    for i in range(0,5):
+        print(arr[i])
+        print('_____________________________________________')
 
-
-        # Under a falling-edge detection, regardless of current execution
-# callback function will be called
-        GPIO.add_event_detect(switch_1, GPIO.FALLING, callback=callback1,
-        bouncetime=200)
-        GPIO.add_event_detect(switch_2, GPIO.FALLING, callback=callback2,
-        bouncetime=200)
 # 'bouncetime=200' includes the bounce control
 # ‘bouncetime=200’ sets 200 milliseconds during which second button press will
 # to remove: GPIO.remove_event_detect(port_number)
-        try:
-            GPIO.wait_for_edge(switch_3, GPIO.RISING)
-        except KeyboardInterrupt:
-            GPIO.cleanup() # clean up GPIO on CTRL+C exit
+# Under a falling-edge detection, regardless of current execution
+# callback function will be called
 
-        GPIO.cleanup() # clean up GPIO on normal exit
+GPIO.add_event_detect(resetSwitch, GPIO.FALLING, callback=resetCallback,bouncetime=200)
+GPIO.add_event_detect(StopSwitch, GPIO.FALLING, callback=stopCallback,bouncetime=200)
+GPIO.add_event_detect(dispSwitch, GPIO.FALLING, callback=displayCallback,bouncetime=200)
+GPIO.add_event_detect(freqSwitch, GPIO.FALLING, callback=freqCallback,bouncetime=200)
+try:
+    while True:
+        if (start == True):
+            pot_data = GetData (pot_channel)
+            pot_volts = ConvertVolts(pot_data ,2)
+            ldr_data = GetData (ldr_channel)
+            ldr_volts = ConvertVolts(ldr_data ,2)
+            temp_data = GetData (temp_channel)
+            temp_volts = ConvertVolts(temp_data ,2)
+            temp = Temperature(temp_volts)
+            light = Percent(ldr_volts)
+            element = (str(time.strftime("%H:%M:%S   ")) + '00:00:' + str(timer)+ "     " + str(pot)+ 'V    ' + str(temp) + 'C     ' + str(light) +'%')
+            # print (time.strftime("%H:%M:%S  "),'00:00:' + str(timer),'   ',str(pot)+ 'V   ' , str(temp) + 'C   ', str(light) +'%')
+            arr.append(element)
 
-        # Read Voltage data
-        pot_data = GetData (pot_channel)
-        ldr_data = GetData (ldr_channel)
-        temp_data = GetData (temp_channel)
-        sensor_volt = ConvertVolts(sensor_data,2)
  # Wait before repeating loop
         time.sleep(delay)
-    except KeyboardInterrupt:
-        spi.close()
+        timer +=delay
+except KeyboardInterrupt:
+    spi.close()
