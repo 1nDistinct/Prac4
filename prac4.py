@@ -8,10 +8,13 @@ import RPi.GPIO as GPIO
 #Define Variables
 global count
 count = 0
+global timer
 timer = 0
 start = True
 global delay
 delay = 0.5
+i=0
+initiate= True
 ldr_channel = 0
 temp_channel = 1
 pot_channel = 2
@@ -56,14 +59,15 @@ def Percent (voltage):
 
 # function definition: threaded callback
 def resetCallback(channel):
-    
+    global timer
     timer = 0
     print ("\n" * 100)
 
 def stopCallback(channel):
     global count
-    arr.clear()
     count += 1
+    global start
+
     if (count%2 == 0):
         start = True
         print("Start")
@@ -93,14 +97,35 @@ def displayCallback(channel):
 # to remove: GPIO.remove_event_detect(port_number)
 # Under a falling-edge detection, regardless of current execution
 # callback function will be called
+while(i<5 and initiate == True):
+    global Timer
+    if (i==5):
+        initiate=False
+    pot_data = GetData (pot_channel)
+    pot_volts = ConvertVolts(pot_data ,2)
+    ldr_data = GetData (ldr_channel)
+    ldr_volts = ConvertVolts(ldr_data ,2)
+    temp_data = GetData (temp_channel)
+    temp_volts = ConvertVolts(temp_data ,2)
+    temp = Temperature(temp_volts)
+    light = Percent(ldr_volts)
+    element = (str(time.strftime("%H:%M:%S   ")) + '00:00:' + str(timer)+ "     " + str(pot_volts)+ 'V    ' + str(temp) + 'C     ' + str(light) +'%')
+    arr.append(element)
+    i+=1
+    timer =timer + delay
+
+
+
 
 GPIO.add_event_detect(resetSwitch, GPIO.FALLING, callback=resetCallback,bouncetime=200)
 GPIO.add_event_detect(StopSwitch, GPIO.FALLING, callback=stopCallback,bouncetime=200)
 GPIO.add_event_detect(dispSwitch, GPIO.FALLING, callback=displayCallback,bouncetime=200)
 GPIO.add_event_detect(freqSwitch, GPIO.FALLING, callback=freqCallback,bouncetime=200)
 try:
+    global timer
     while True:
         if (start == True):
+
             pot_data = GetData (pot_channel)
             pot_volts = ConvertVolts(pot_data ,2)
             ldr_data = GetData (ldr_channel)
@@ -110,11 +135,19 @@ try:
             temp = Temperature(temp_volts)
             light = Percent(ldr_volts)
             element = (str(time.strftime("%H:%M:%S   ")) + '00:00:' + str(timer)+ "     " + str(pot_volts)+ 'V    ' + str(temp) + 'C     ' + str(light) +'%')
-            # print (time.strftime("%H:%M:%S  "),'00:00:' + str(timer),'   ',str(pot)+ 'V   ' , str(temp) + 'C   ', str(light) +'%')
             arr.append(element)
 
+            print('_______________________________________________')
+            print('Time        Timer          Pot    Temp   Light')
+            print('_______________________________________________')
+            for i in range(0,5):
+                print(arr[i])
+                print('_____________________________________________')
+            time.sleep(delay)
+            timer = timer +delay
+        else:
+            continue
  # Wait before repeating loop
-        time.sleep(delay)
-        timer +=delay
+
 except KeyboardInterrupt:
     spi.close()
